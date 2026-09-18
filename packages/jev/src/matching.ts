@@ -1,10 +1,9 @@
 import type { $ZodBoolean, $ZodEnum, $ZodType, $ZodTypes, output } from 'zod/v4/core'
 import { globalRegistry, parseAsync } from 'zod/v4/core'
 import { readChoice, readProbability } from './answers'
-import type { DecisionRuntime } from './runtime'
+import type { DecisionQuestion, DecisionRuntime } from './runtime'
 import { createTag } from './tag'
 import { compileTemplate } from './template'
-import type { DecisionQuestion } from './transport'
 
 export type EnumSchema = $ZodEnum<Record<string, string>>
 export type MatcherShape = Record<string, EnumSchema | $ZodBoolean>
