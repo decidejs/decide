@@ -9,6 +9,7 @@
     "check:types": "tsc --noEmit",
     "fix": "biome check --write",
     "test": "vitest run",
+    "test:e2e": "pnpm build && vitest run --config vitest.e2e.config.ts",
     "test:update": "vitest run --update",
     "cov": "vitest run --coverage",
     "bump": "changeset version && changeset tag"
