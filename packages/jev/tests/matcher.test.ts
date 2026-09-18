@@ -12,7 +12,7 @@ it('reuses a typed matcher to classify tickets in one request per invocation', a
       },
     }),
   )
-  configure({ apiKey: 'test-key', fetch })
+  configure({ client: { apiKey: 'test-key', fetch } })
   const classify = matcher({
     category: z.enum(['billing', 'technical']).describe('Which team should handle this?'),
     urgent: z.boolean().describe('Does this require immediate attention?'),

@@ -9,15 +9,15 @@ import type { DecisionOptions } from './tag'
 import { createTag, resolveThreshold } from './tag'
 import { compileTemplate } from './template'
 
-export interface DeciderOptions extends TypeSafeClientConfig {
+export interface DeciderOptions {
+  client?: TypeSafeClient | TypeSafeClientConfig
   threshold?: number
 }
 
 export class DecisionRuntime {
   private current?: {
     threshold: number
-    sdkOptions: TypeSafeClientConfig
-    client?: TypeSafeClient
+    client: TypeSafeClient
   }
 
   readonly yes = createTag(async (strings, values, options) => {
@@ -68,10 +68,10 @@ export class DecisionRuntime {
     if (options !== undefined) this.configure(options)
   }
 
-  configure({ threshold, ...sdkOptions }: DeciderOptions) {
+  configure({ threshold, client }: DeciderOptions) {
     this.current = {
       threshold: resolveThreshold(threshold),
-      sdkOptions,
+      client: client instanceof TypeSafeClient ? client : new TypeSafeClient(client),
     }
   }
 
@@ -101,7 +101,6 @@ export class DecisionRuntime {
       throw new Error('Call decide.configure(...) before evaluating a global decision')
     }
 
-    current.client ??= new TypeSafeClient(current.sdkOptions)
     const compiled = Object.fromEntries(
       Object.entries(questions).map(([id, question]): [string, Question] => {
         const framed = [instructions, question.instructions].filter(Boolean).join('\n\n')

@@ -1,3 +1,4 @@
+import { TypeSafeClient } from '@typesafe-ai/sdk'
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { z } from 'zod'
 import * as mini from 'zod/mini'
@@ -14,6 +15,41 @@ function response(noul: unknown) {
   )
 }
 
+describe('client configuration', () => {
+  it('retains an existing client and invokes it with its receiver', async () => {
+    const client = new TypeSafeClient({ apiKey: 'test-key', fetch: response(0.9) })
+    const systemOne = vi.spyOn(client, 'systemOne')
+    vi.stubEnv('TYPESAFE_API_KEY', '')
+    const runtime = new DecisionRuntime({ client })
+    await expect(runtime.yes`valid?`).resolves.toBe(true)
+    expect(systemOne).toHaveBeenCalledTimes(1)
+  })
+
+  it('constructs the client during configuration without retaining its options', async () => {
+    const fetch = response(0.9)
+    const options = { apiKey: 'test-key', fetch }
+    const runtime = new DecisionRuntime({ client: options })
+    options.fetch = response(0.1)
+    await expect(runtime.yes`valid?`).resolves.toBe(true)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(options.fetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid client options during setup and preserves an existing configuration', async () => {
+    const runtime = new DecisionRuntime({ client: { apiKey: 'test-key', fetch: response(0.7) } })
+    expect(() =>
+      runtime.configure({
+        client: { apiKey: 'test-key', timeout: 0 },
+        threshold: 0.8,
+      }),
+    ).toThrow()
+    await expect(runtime.yes`valid?`).resolves.toBe(true)
+
+    vi.stubEnv('TYPESAFE_API_KEY', '')
+    expect(() => new DecisionRuntime({ client: {} })).toThrow('API key')
+  })
+})
+
 describe('boolean decisions', () => {
   it('requires configuration before evaluation', async () => {
     const runtime = new DecisionRuntime()
@@ -27,7 +63,7 @@ describe('boolean decisions', () => {
     [0.51, true, false],
     [1, true, false],
   ])('projects probability %s into complementary default predicates', async (p, yes, no) => {
-    const custom = new DecisionRuntime({ apiKey: 'test-key', fetch: response(p) })
+    const custom = new DecisionRuntime({ client: { apiKey: 'test-key', fetch: response(p) } })
     await expect(custom.yes`valid?`).resolves.toBe(yes)
     await expect(custom.no`valid?`).resolves.toBe(no)
   })
@@ -39,13 +75,16 @@ describe('boolean decisions', () => {
     [0.7, false, false],
     [0.8, true, false],
   ])('preserves an uncertainty band at probability %s', async (p, yes, no) => {
-    const custom = new DecisionRuntime({ apiKey: 'test-key', threshold: 0.8, fetch: response(p) })
+    const custom = new DecisionRuntime({
+      client: { apiKey: 'test-key', fetch: response(p) },
+      threshold: 0.8,
+    })
     await expect(custom.yes`valid?`).resolves.toBe(yes)
     await expect(custom.no`valid?`).resolves.toBe(no)
   })
 
   it('supports reusable per-call options without changing instance defaults', async () => {
-    const custom = new DecisionRuntime({ apiKey: 'test-key', fetch: response(0.7) })
+    const custom = new DecisionRuntime({ client: { apiKey: 'test-key', fetch: response(0.7) } })
     const strict = custom.yes({ threshold: 0.8 })
     const result = strict`valid?`
     await expect(result).resolves.toBe(false)
@@ -58,11 +97,13 @@ describe('boolean decisions', () => {
   it('passes structured state and instance and per-call SDK configuration', async () => {
     const fetch = response(0.9)
     const custom = new DecisionRuntime({
-      apiKey: 'test-key',
-      baseURL: 'https://example.test',
-      defaultModel: 'configured-model',
-      defaultHeaders: { 'x-example': 'configured' },
-      fetch,
+      client: {
+        apiKey: 'test-key',
+        baseURL: 'https://example.test',
+        defaultModel: 'configured-model',
+        defaultHeaders: { 'x-example': 'configured' },
+        fetch,
+      },
     })
     const value = { tags: ['a', 'b'] }
     await custom.yes`is ${value} valid?`
@@ -83,21 +124,23 @@ describe('boolean decisions', () => {
     const runtime = new DecisionRuntime()
     const positive = response(0.7)
     const negative = response(0.1)
-    const instance = new DecisionRuntime({ apiKey: 'test-key', fetch: positive })
+    const instance = new DecisionRuntime({ client: { apiKey: 'test-key', fetch: positive } })
     const { yes, no } = runtime
     const strict = yes({ threshold: 0.8 })
-    runtime.configure({ apiKey: 'test-key', fetch: positive })
+    runtime.configure({ client: { apiKey: 'test-key', fetch: positive } })
     await expect(yes`valid?`).resolves.toBe(true)
     await expect(no`valid?`).resolves.toBe(false)
     await expect(strict`valid?`).resolves.toBe(false)
-    runtime.configure({ apiKey: 'test-key', fetch: negative })
+    runtime.configure({ client: { apiKey: 'test-key', fetch: negative } })
     await expect(yes`valid?`).resolves.toBe(false)
     await expect(no`valid?`).resolves.toBe(true)
     await expect(instance.yes`valid?`).resolves.toBe(true)
   })
 
   it('supports destructuring predicate properties', async () => {
-    const { yes, no } = new DecisionRuntime({ apiKey: 'test-key', fetch: response(0.7) })
+    const { yes, no } = new DecisionRuntime({
+      client: { apiKey: 'test-key', fetch: response(0.7) },
+    })
     await expect(yes`valid?`).resolves.toBe(true)
     await expect(no`valid?`).resolves.toBe(false)
     await expect(yes({ threshold: 0.8 })`valid?`).resolves.toBe(false)
@@ -117,7 +160,7 @@ describe('boolean decisions', () => {
   })
 
   it.each([undefined, '0.8', -0.1, 1.1, null])('rejects invalid probabilities: %s', async (p) => {
-    const custom = new DecisionRuntime({ apiKey: 'test-key', fetch: response(p) })
+    const custom = new DecisionRuntime({ client: { apiKey: 'test-key', fetch: response(p) } })
     await expect(custom.yes`valid?`).rejects.toThrow('Invalid Noul probability')
   })
 
@@ -126,7 +169,7 @@ describe('boolean decisions', () => {
       init?.signal?.throwIfAborted()
       return new Response('unauthorized', { status: 401 })
     })
-    const custom = new DecisionRuntime({ apiKey: 'test-key', fetch })
+    const custom = new DecisionRuntime({ client: { apiKey: 'test-key', fetch } })
     await expect(custom.yes`valid?`).rejects.toMatchObject({ status: 401 })
     fetch.mockClear()
     await expect(custom.yes({ signal: AbortSignal.abort() })`valid?`).rejects.toMatchObject({
@@ -141,7 +184,7 @@ function fixture(answers: unknown, threshold?: number) {
   )
   return {
     fetch,
-    custom: new DecisionRuntime({ apiKey: 'test-key', fetch, threshold }),
+    custom: new DecisionRuntime({ client: { apiKey: 'test-key', fetch }, threshold }),
     request: (index = 0) => JSON.parse(fetch.mock.calls[index][1]?.body as string),
   }
 }
@@ -296,11 +339,13 @@ describe('batched matchers', () => {
     const { custom, fetch } = fixture({ decision: { type: 'noul', noul: 0.9 } })
     const classify = runtime.matcher({ urgent: z.boolean() })
     runtime.configure({
-      apiKey: 'test-key',
-      fetch: async () => Response.json({ answers: { urgent: { type: 'noul', noul: 0.9 } } }),
+      client: {
+        apiKey: 'test-key',
+        fetch: async () => Response.json({ answers: { urgent: { type: 'noul', noul: 0.9 } } }),
+      },
     })
     await expect(classify`context`).resolves.toEqual({ urgent: true })
-    runtime.configure({ apiKey: 'test-key', fetch, threshold: 1 })
+    runtime.configure({ client: { apiKey: 'test-key', fetch }, threshold: 1 })
     await expect(runtime.yes`context`).resolves.toBe(false)
     await expect(custom.yes`context`).resolves.toBe(true)
   })
