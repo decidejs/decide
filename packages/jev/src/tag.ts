@@ -1,11 +1,21 @@
+/** Overrides for a reusable tag; configured decider defaults remain unchanged. */
 export interface DecisionOptions {
+  /** Boolean threshold in [0.5, 1]; overrides the decider's default for this tag. */
   threshold?: number
+  /** Overrides the client's default model for this tag's requests. */
   model?: string
+  /** Cancels the request and any pending retries. */
   signal?: AbortSignal
 }
 
+/**
+ * Interpolations must be JSON-compatible and are sent as structured state.
+ * @example
+ * await decide.yes({ threshold: 0.8 })`is ${message} safe to publish?`
+ */
 export interface DecisionTag<T> {
   (strings: TemplateStringsArray, ...values: unknown[]): Promise<T>
+  /** Returns a new tag with merged options, leaving this tag unchanged. */
   (options: DecisionOptions): DecisionTag<T>
 }
 

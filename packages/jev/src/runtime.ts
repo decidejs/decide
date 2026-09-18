@@ -10,7 +10,9 @@ import { createTag, resolveThreshold } from './tag'
 import { compileTemplate } from './template'
 
 export interface DeciderOptions {
+  /** SDK client or construction options. Omit to use SDK defaults, including `TYPESAFE_API_KEY`. */
   client?: TypeSafeClient | TypeSafeClientConfig
+  /** Default boolean threshold in [0.5, 1]. Defaults to 0.5; higher values allow both yes and no to be false. */
   threshold?: number
 }
 
