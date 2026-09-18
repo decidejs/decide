@@ -2,7 +2,7 @@
   "name": "@decide.js/jev",
   "version": "0.0.1",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "./lib/index.cjs",
   "files": [
     "lib"
   ],
@@ -17,19 +17,28 @@
     "prepublishOnly": "turbo run build"
   },
   "publishConfig": {
-    "access": "public",
-    "main": "lib/index.cjs",
-    "module": "lib/index.js",
-    "types": "lib/index.d.ts",
-    "exports": {
-      ".": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0",
+    "zod": "^4.6.5"
+  },
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
         "types": "./lib/index.d.ts",
-        "import": "./lib/index.js",
-        "require": "./lib/index.cjs"
+        "default": "./lib/index.js"
+      },
+      "require": {
+        "types": "./lib/index.d.cts",
+        "default": "./lib/index.cjs"
       }
     }
   },
-  "dependencies": {
-    "@typesafe-ai/sdk": "^0.6.0"
-  }
+  "engines": {
+    "node": ">=20"
+  },
+  "sideEffects": false
 }

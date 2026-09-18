@@ -5,6 +5,7 @@ export default defineConfig({
   outDir: 'lib',
   format: ['esm', 'cjs'],
   platform: 'node',
+  target: 'node20',
   dts: true,
   clean: true,
   minify: false,

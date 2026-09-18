@@ -23,3 +23,15 @@ export function readProbability(answers: unknown, id: string) {
   }
   return probability
 }
+
+export function readChoice(answers: unknown, id: string, options: readonly string[]) {
+  const answer = readAnswer(answers, id)
+  if (
+    answer.type !== 'choice' ||
+    typeof answer.choice !== 'string' ||
+    !options.includes(answer.choice)
+  ) {
+    throw new TypeError(`Invalid Choice answer for "${id}"`)
+  }
+  return answer.choice
+}
