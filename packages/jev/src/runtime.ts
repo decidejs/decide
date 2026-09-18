@@ -1,11 +1,11 @@
 import type { Question, TypeSafeClientConfig } from '@typesafe-ai/sdk'
 import { TypeSafeClient } from '@typesafe-ai/sdk'
-import type { output } from 'zod/v4/core'
+import type { $ZodBoolean, output } from 'zod/v4/core'
 import { parseAsync } from 'zod/v4/core'
 import { readChoice, readProbability } from './answers'
 import type { DecisionQuestion, EnumSchema, MatcherResult, MatcherShape } from './schema'
-import { compileSchema } from './schema'
-import type { DecisionOptions } from './tag'
+import { compileArrayItemSchema, compileFieldSchema } from './schema'
+import type { DecisionOptions, DecisionTag } from './tag'
 import { createTag, resolveThreshold } from './tag'
 import { compileTemplate } from './template'
 
@@ -39,8 +39,8 @@ export class DecisionRuntime {
   })
 
   readonly match = <Schema extends EnumSchema>(schema: Schema) => {
-    const question = compileSchema(schema, 'option')
-    if (question.type !== 'choice') throw new TypeError('match requires a Zod 4 string enum')
+    const question = compileFieldSchema(schema, 'option')
+    if (question.type !== 'choice') throw new TypeError('match requires a Zod string enum')
 
     return createTag<output<Schema>>(async (strings, values, options) => {
       const { answers } = await this.evaluate(strings, values, { decision: question }, options)
@@ -48,28 +48,12 @@ export class DecisionRuntime {
     })
   }
 
-  readonly matcher = <Shape extends MatcherShape>(shape: Shape) => {
-    const fields = Object.entries(shape).map(([name, schema]) => ({
-      name,
-      schema,
-      question: compileSchema(schema, name),
-    }))
-    if (fields.length === 0) throw new TypeError('matcher requires at least one field')
-    const questions = Object.fromEntries(fields.map(({ name, question }) => [name, question]))
-
-    return createTag<MatcherResult<Shape>>(async (strings, values, options) => {
-      const { answers, threshold } = await this.evaluate(strings, values, questions, options)
-      const entries = await Promise.all(
-        fields.map(async ({ name, schema, question }) => {
-          const value =
-            question.type === 'noul'
-              ? readProbability(answers, name) >= threshold
-              : readChoice(answers, name, question.options)
-          return [name, await parseAsync(schema, value)] as const
-        }),
-      )
-      return Object.fromEntries(entries) as MatcherResult<Shape>
-    })
+  readonly matcher = <const Shape extends MatcherShape>(shape: Shape) => {
+    return (
+      Array.isArray(shape)
+        ? this.arrayMatcher(shape)
+        : this.objectMatcher(shape as Record<string, EnumSchema | $ZodBoolean>)
+    ) as DecisionTag<MatcherResult<Shape>>
   }
 
   constructor(options?: DeciderOptions) {
@@ -81,6 +65,53 @@ export class DecisionRuntime {
       threshold: resolveThreshold(threshold),
       client: client instanceof TypeSafeClient ? client : new TypeSafeClient(client),
     }
+  }
+
+  private arrayMatcher(schemas: readonly (EnumSchema | $ZodBoolean)[]) {
+    if (schemas.length === 0) throw new TypeError('matcher requires at least one field')
+    const fields = Array.from(schemas, (schema, index) => ({
+      name: String(index),
+      schema,
+      question: compileArrayItemSchema(schema, index),
+    }))
+    const questions = Object.fromEntries(fields.map(({ name, question }) => [name, question]))
+
+    return createTag(async (strings, values, options) => {
+      const { answers, threshold } = await this.evaluate(strings, values, questions, options)
+      return Promise.all(
+        fields.map(async ({ name, schema, question }) => {
+          const value =
+            question.type === 'noul'
+              ? readProbability(answers, name) >= threshold
+              : readChoice(answers, name, question.options)
+          return parseAsync(schema, value)
+        }),
+      )
+    })
+  }
+
+  private objectMatcher(shape: Record<string, EnumSchema | $ZodBoolean>) {
+    const fields = Object.entries(shape).map(([name, schema]) => ({
+      name,
+      schema,
+      question: compileFieldSchema(schema, name),
+    }))
+    if (fields.length === 0) throw new TypeError('matcher requires at least one field')
+    const questions = Object.fromEntries(fields.map(({ name, question }) => [name, question]))
+
+    return createTag(async (strings, values, options) => {
+      const { answers, threshold } = await this.evaluate(strings, values, questions, options)
+      const entries = await Promise.all(
+        fields.map(async ({ name, schema, question }) => {
+          const value =
+            question.type === 'noul'
+              ? readProbability(answers, name) >= threshold
+              : readChoice(answers, name, question.options)
+          return [name, await parseAsync(schema, value)] as const
+        }),
+      )
+      return Object.fromEntries(entries)
+    })
   }
 
   private async probability(

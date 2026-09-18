@@ -11,7 +11,7 @@ export type { DecisionOptions, DecisionTag } from './tag'
 /**
  * Decision functions are safe to destructure and retain their decider's configuration.
  * Use a tag directly, or call it with options to create a configured tag.
- * `match` and `matcher` return tags after receiving a schema or field shape.
+ * `match` and `matcher` return tags after receiving a schema or collection of schemas.
  */
 export interface Decisions {
   /**
@@ -45,7 +45,13 @@ export interface Decisions {
    */
   match<Schema extends EnumSchema>(schema: Schema): DecisionTag<output<Schema>>
   /**
-   * Creates a reusable tag that evaluates all fields in one request.
+   * Creates a reusable tag that evaluates a nonempty object or array in one request.
+   * Objects return named results; arrays return results in input order.
+   * Inline arrays infer tuple results with a separate type for each position.
+   * Every array entry must have a nonempty `description`, set with `.describe(...)`.
+   * Missing or blank array descriptions throw when creating the matcher.
+   * Descriptions are the questions; the template supplies shared context.
+   * Object fields fall back to their names when descriptions are absent.
    * Pass options to the returned tag; threshold applies to boolean fields.
    *
    * @example
@@ -57,8 +63,18 @@ export interface Decisions {
    * })
    * const { category, urgent } = await classify`classify ${ticket}`
    * await classify({ threshold: 0.8 })`classify ${ticket}`
+   *
+   * @example
+   * import { z } from 'zod'
+   *
+   * const classify = decide.matcher([
+   *   z.enum(['billing', 'technical']).describe('Which team should handle this?'),
+   *   z.boolean().describe('Does this require immediate attention?'),
+   * ])
+   * const [category, urgent] = await classify`classify ${ticket}`
+   * await classify({ threshold: 0.8 })`classify ${ticket}`
    */
-  matcher<Shape extends MatcherShape>(shape: Shape): DecisionTag<MatcherResult<Shape>>
+  matcher<const Shape extends MatcherShape>(shape: Shape): DecisionTag<MatcherResult<Shape>>
 }
 
 export interface ConfigurableDecisions extends Decisions {

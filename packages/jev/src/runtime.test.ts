@@ -213,6 +213,7 @@ describe('boolean decisions', () => {
         runtime.no,
         runtime.match(z.enum(['a', 'b'])),
         runtime.matcher({ urgent: z.boolean() }),
+        runtime.matcher([z.boolean().describe('Is this urgent?')]),
       ]
       for (const tag of tags) {
         expect(() => tag({ threshold })).toThrow(RangeError)
@@ -322,6 +323,86 @@ describe('enum matching', () => {
 })
 
 describe('batched matchers', () => {
+  it('evaluates array questions in one request and preserves tuple order and types', async () => {
+    const { custom, fetch, request } = fixture({
+      1: { type: 'noul', noul: 0.7 },
+      0: { type: 'choice', choice: 'billing' },
+    })
+    const classify = custom.matcher([
+      z.enum(['billing', 'technical']).describe('Which team should handle this?'),
+      z.boolean().describe('Does this require immediate attention?'),
+    ])
+    const ticket = { message: 'Charged twice' }
+    const result = classify({ threshold: 0.8 })`for ${ticket}`
+    expectTypeOf(result).toEqualTypeOf<Promise<['billing' | 'technical', boolean]>>()
+    await expect(result).resolves.toEqual(['billing', false])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(request()).toMatchObject({
+      state: { arg0: ticket },
+      questions: {
+        0: { type: 'choice', instructions: 'for `arg0`\n\nWhich team should handle this?' },
+        1: { type: 'noul', instructions: 'for `arg0`\n\nDoes this require immediate attention?' },
+      },
+    })
+    await expect(classify`next ticket`).resolves.toEqual(['billing', true])
+  })
+
+  it('supports dynamic arrays and readonly tuples with registered Mini descriptions', async () => {
+    const { custom } = fixture({
+      0: { type: 'noul', noul: 0.5 },
+      1: { type: 'noul', noul: 0.4 },
+    })
+    const schemas = ['Is this urgent?', 'Is this spam?'].map((question) =>
+      z.boolean().describe(question),
+    )
+    const result = custom.matcher(schemas)`ticket`
+    expectTypeOf(result).toEqualTypeOf<Promise<boolean[]>>()
+    await expect(result).resolves.toEqual([true, false])
+    const tuple = [
+      mini.boolean().register(z.globalRegistry, { description: 'Is this urgent?' }),
+    ] as const
+    const tupleResult = custom.matcher(tuple)`ticket`
+    expectTypeOf(tupleResult).toEqualTypeOf<Promise<[boolean]>>()
+    await expect(tupleResult).resolves.toEqual([true])
+  })
+
+  it.each([undefined, '', ' \n\t '])(
+    'rejects array descriptions before sending a request: %s',
+    (description) => {
+      const { custom, fetch } = fixture({})
+      const schema = description === undefined ? z.boolean() : z.boolean().describe(description)
+      expect(() => custom.matcher([z.boolean().describe('Valid question?'), schema])).toThrow(
+        'Array schema at index 1 requires a nonempty description',
+      )
+      expect(fetch).not.toHaveBeenCalled()
+    },
+  )
+
+  it('rejects empty arrays and unsupported array schemas before sending a request', () => {
+    const { custom, fetch } = fixture({})
+    expect(() => custom.matcher([])).toThrow('at least one field')
+    // @ts-expect-error Arrays support only boolean and string enum schemas.
+    expect(() => custom.matcher([z.string().describe('What is this?')])).toThrow(
+      'Unsupported schema',
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing array answers and applies async schema refinements', async () => {
+    const { custom } = fixture({ 0: { type: 'noul', noul: 0.9 } })
+    await expect(
+      custom.matcher([
+        z.boolean().describe('Is this urgent?'),
+        z.boolean().describe('Is this spam?'),
+      ])`ticket`,
+    ).rejects.toThrow('Missing answer for "1"')
+    const schema = z
+      .boolean()
+      .refine(async (value) => !value, 'Must be false')
+      .describe('Is this spam?')
+    await expect(custom.matcher([schema])`ticket`).rejects.toThrow('Must be false')
+  })
+
   it('evaluates described fields in one request and infers each result', async () => {
     const { custom, fetch, request } = fixture({
       category: { type: 'choice', choice: 'billing' },
