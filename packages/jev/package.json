@@ -20,7 +20,12 @@
     "access": "public"
   },
   "dependencies": {
-    "@typesafe-ai/sdk": "^0.6.0",
+    "@typesafe-ai/sdk": "^0.6.0"
+  },
+  "peerDependencies": {
+    "zod": "4"
+  },
+  "devDependencies": {
     "zod": "^4.6.5"
   },
   "module": "./lib/index.js",
