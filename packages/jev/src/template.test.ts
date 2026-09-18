@@ -30,6 +30,7 @@ describe('template state', () => {
     1n,
     () => {},
     Symbol('value'),
+    { [Symbol('metadata')]: 'value' },
     new Date(),
     new Map(),
     new Array(2),

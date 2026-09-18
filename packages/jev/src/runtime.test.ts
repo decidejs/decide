@@ -51,6 +51,17 @@ describe('client configuration', () => {
 })
 
 describe('boolean decisions', () => {
+  it('rejects a plain string call before sending a request', () => {
+    const fetch = response(0.9)
+    const runtime = new DecisionRuntime({ client: { apiKey: 'test-key', fetch } })
+
+    // @ts-expect-error JavaScript callers can pass a string instead of a tagged template.
+    expect(() => runtime.yes('Is this urgent?')).toThrow(
+      'Expected a tagged template or an options object',
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('requires configuration before evaluation', async () => {
     const runtime = new DecisionRuntime()
     await expect(runtime.yes`is this valid?`).rejects.toThrow('decide.configure')
