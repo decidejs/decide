@@ -1,8 +1,9 @@
 {
   "name": "@decide.js/jev",
   "version": "0.0.1",
+  "description": "A semantic decision library powered by Jev.",
   "type": "module",
-  "main": "./lib/index.cjs",
+  "main": "src/index.ts",
   "files": [
     "lib"
   ],
@@ -11,13 +12,44 @@
     "url": "https://github.com/unbyte"
   },
   "license": "MIT",
-  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/decidejs/decide.git",
+    "directory": "packages/jev"
+  },
+  "homepage": "https://github.com/decidejs/decide/tree/main/packages/jev#readme",
+  "bugs": {
+    "url": "https://github.com/decidejs/decide/issues"
+  },
+  "keywords": [
+    "ai",
+    "jev",
+    "typesafe",
+    "typescript",
+    "zod",
+    "decisions"
+  ],
   "scripts": {
     "build": "tsup",
     "prepublishOnly": "turbo run build"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "main": "lib/index.cjs",
+    "module": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./lib/index.d.ts",
+          "default": "./lib/index.js"
+        },
+        "require": {
+          "types": "./lib/index.d.cts",
+          "default": "./lib/index.cjs"
+        }
+      }
+    }
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0"
@@ -27,20 +59,6 @@
   },
   "devDependencies": {
     "zod": "^4.6.5"
-  },
-  "module": "./lib/index.js",
-  "types": "./lib/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./lib/index.d.ts",
-        "default": "./lib/index.js"
-      },
-      "require": {
-        "types": "./lib/index.d.cts",
-        "default": "./lib/index.cjs"
-      }
-    }
   },
   "engines": {
     "node": ">=20"

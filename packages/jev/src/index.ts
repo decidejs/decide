@@ -67,12 +67,21 @@ export interface Decisions {
    * @example
    * import { z } from 'zod'
    *
-   * const classify = decide.matcher([
-   *   z.enum(['billing', 'technical']).describe('Which team should handle this?'),
-   *   z.boolean().describe('Does this require immediate attention?'),
-   * ])
-   * const [category, urgent] = await classify`classify ${ticket}`
-   * await classify({ threshold: 0.8 })`classify ${ticket}`
+   * const questions = [
+   *   'Does the announcement explain what changed?',
+   *   'Does it say when the change takes effect?',
+   *   'Does it explain whether users need to take action?',
+   * ]
+   * const review = decide.matcher(
+   *   questions.map((question) => z.boolean().describe(question)),
+   * )
+   * const draft = {
+   *   title: 'New dashboard',
+   *   body: 'Our redesigned dashboard launches on Monday.',
+   * }
+   * const results = await review`review this announcement: ${draft}`
+   * const unmetChecks = questions.filter((_, index) => !results[index])
+   * await review({ threshold: 0.8 })`review this announcement: ${draft}`
    */
   matcher<const Shape extends MatcherShape>(shape: Shape): DecisionTag<MatcherResult<Shape>>
 }
