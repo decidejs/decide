@@ -12,8 +12,9 @@ it('creates independent deciders with destructurable methods', async () => {
   const { yes, no } = strict
   await expect(normal.yes`acceptable?`).resolves.toBe(true)
   await expect(yes`acceptable?`).resolves.toBe(false)
-  await expect(no`acceptable?`).resolves.toBe(false)
+  await expect(no`acceptable?`).resolves.toBe(true)
   await expect(yes({ threshold: 0.6 })`acceptable?`).resolves.toBe(true)
+  await expect(no({ threshold: 0.6 })`acceptable?`).resolves.toBe(false)
 
   decide.configure({ client: { apiKey: 'test-key', fetch }, threshold: 1 })
   await expect(decide.yes`acceptable?`).resolves.toBe(false)

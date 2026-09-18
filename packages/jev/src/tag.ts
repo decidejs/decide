@@ -1,6 +1,10 @@
-/** Overrides for a reusable tag; configured decider defaults remain unchanged. */
+/**
+ * Overrides for a reusable tag; configured decider defaults remain unchanged.
+ */
 export interface DecisionOptions {
-  /** Boolean threshold in [0.5, 1]; overrides the decider's default for this tag. */
+  /**
+   * Boolean threshold in [0, 1]; overrides the decider's default for this tag.
+   */
   threshold?: number
   /** Overrides the client's default model for this tag's requests. */
   model?: string
@@ -20,8 +24,8 @@ export interface DecisionTag<T> {
 }
 
 export function resolveThreshold(threshold = 0.5) {
-  if (!Number.isFinite(threshold) || threshold < 0.5 || threshold > 1) {
-    throw new RangeError('threshold must be a finite number between 0.5 and 1')
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+    throw new RangeError('threshold must be a finite number between 0 and 1')
   }
   return threshold
 }

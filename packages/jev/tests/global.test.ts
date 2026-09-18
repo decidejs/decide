@@ -17,4 +17,5 @@ it('uses a configured global decision in ordinary control flow', async () => {
   expect(published).toEqual([message])
   await expect(no`is ${message} safe to publish?`).resolves.toBe(false)
   await expect(yes({ threshold: 0.8 })`is ${message} safe to publish?`).resolves.toBe(false)
+  await expect(no({ threshold: 0.8 })`is ${message} safe to publish?`).resolves.toBe(true)
 })

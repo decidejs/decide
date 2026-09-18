@@ -3,7 +3,10 @@ import { globalRegistry } from 'zod/v4/core'
 
 /** A nonempty Zod 4 string enum. */
 export type EnumSchema = $ZodEnum<Record<string, string>>
-/** A nonempty set of fields. Use `.describe(...)` for field questions; names provide fallbacks. */
+/**
+ * A nonempty set of fields.
+ * Use `.describe(...)` for field questions; names provide fallbacks.
+ */
 export type MatcherShape = Record<string, EnumSchema | $ZodBoolean>
 export type MatcherResult<Shape extends MatcherShape> = { [Key in keyof Shape]: output<Shape[Key]> }
 

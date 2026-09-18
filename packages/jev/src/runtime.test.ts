@@ -70,17 +70,65 @@ describe('boolean decisions', () => {
 
   it.each([
     [0.2, false, true],
-    [0.3, false, false],
-    [0.5, false, false],
-    [0.7, false, false],
+    [0.3, false, true],
+    [0.5, false, true],
+    [0.7, false, true],
     [0.8, true, false],
-  ])('preserves an uncertainty band at probability %s', async (p, yes, no) => {
-    const custom = new DecisionRuntime({
+  ])(
+    'keeps predicates complementary at a high threshold for probability %s',
+    async (p, yes, no) => {
+      const custom = new DecisionRuntime({
+        client: { apiKey: 'test-key', fetch: response(p) },
+        threshold: 0.8,
+      })
+      await expect(custom.yes`valid?`).resolves.toBe(yes)
+      await expect(custom.no`valid?`).resolves.toBe(no)
+    },
+  )
+
+  it.each([
+    [0.1, false, true],
+    [0.25, true, false],
+    [0.5, true, false],
+    [0.75, true, false],
+    [0.9, true, false],
+  ])('keeps predicates complementary at a low threshold for probability %s', async (p, yes, no) => {
+    const runtime = new DecisionRuntime({
       client: { apiKey: 'test-key', fetch: response(p) },
-      threshold: 0.8,
+      threshold: 0.25,
     })
-    await expect(custom.yes`valid?`).resolves.toBe(yes)
-    await expect(custom.no`valid?`).resolves.toBe(no)
+    await expect(runtime.yes`valid?`).resolves.toBe(yes)
+    await expect(runtime.no`valid?`).resolves.toBe(no)
+  })
+
+  it.each([
+    [0, 0, true, false],
+    [0, 0.5, true, false],
+    [0, 1, true, false],
+    [1, 0, false, true],
+    [1, 0.5, false, true],
+    [1, 1, true, false],
+  ])('supports threshold %s at probability %s', async (threshold, p, yes, no) => {
+    const runtime = new DecisionRuntime({
+      client: { apiKey: 'test-key', fetch: response(p) },
+      threshold,
+    })
+    await expect(runtime.yes`valid?`).resolves.toBe(yes)
+    await expect(runtime.no`valid?`).resolves.toBe(no)
+  })
+
+  it('accepts weak signals through predicate and matcher overrides', async () => {
+    const { custom } = fixture({
+      decision: { type: 'noul', noul: 0.05 },
+      urgent: { type: 'noul', noul: 0.05 },
+    })
+    await expect(custom.yes({ threshold: 0.01 })`any signal?`).resolves.toBe(true)
+    await expect(custom.no({ threshold: 0.01 })`any signal?`).resolves.toBe(false)
+    await expect(custom.yes`any signal?`).resolves.toBe(false)
+    await expect(custom.no`any signal?`).resolves.toBe(true)
+    const classify = custom.matcher({ urgent: z.boolean() })
+    await expect(classify({ threshold: 0.01 })`ticket`).resolves.toEqual({ urgent: true })
+    await expect(classify`ticket`).resolves.toEqual({ urgent: false })
   })
 
   it('supports reusable per-call options without changing instance defaults', async () => {
@@ -154,7 +202,7 @@ describe('boolean decisions', () => {
     await expect(runtime.yes`valid?`).resolves.toBe(true)
   })
 
-  it.each([-1, 0.4, 1.1, Number.NaN, Infinity])(
+  it.each([-1, -0.01, 1.1, Number.NaN, Infinity])(
     'rejects invalid thresholds before sending a request: %s',
     (threshold) => {
       expect(() => new DecisionRuntime({ threshold })).toThrow(RangeError)
