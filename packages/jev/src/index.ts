@@ -76,13 +76,13 @@ export function createDecider(options: DeciderOptions = {}): Decisions {
   return { yes, no, match, matcher }
 }
 
-const globalRuntime = new DecisionRuntime()
+const runtime = new DecisionRuntime()
 
 /** Global decider. Call `decide.configure(...)` before its first evaluation. */
 export const decide: ConfigurableDecisions = {
-  yes: globalRuntime.yes,
-  no: globalRuntime.no,
-  match: globalRuntime.match,
-  matcher: globalRuntime.matcher,
-  configure: (options) => globalRuntime.configure(options),
+  yes: runtime.yes,
+  no: runtime.no,
+  match: runtime.match,
+  matcher: runtime.matcher,
+  configure: (options) => runtime.configure(options),
 }
