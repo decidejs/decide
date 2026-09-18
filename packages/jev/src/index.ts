@@ -10,18 +10,54 @@ export type { DecisionOptions, DecisionTag } from './tag'
 
 /**
  * Decision functions are safe to destructure and retain their decider's configuration.
+ * Use a tag directly, or call it with options to create a configured tag.
+ * `match` and `matcher` return tags after receiving a schema or field shape.
  */
 export interface Decisions {
-  /** True when the probability of yes reaches the threshold. */
+  /**
+   * True when the probability of yes reaches the threshold.
+   *
+   * @example
+   * await decide.yes`is ${message} acceptable?`
+   * await decide.yes({ threshold: 0.8 })`is ${message} acceptable?`
+   */
   yes: DecisionTag<boolean>
   /**
    * True when the probability of yes is below the threshold.
    * Complements `yes` for the same probability and threshold.
+   *
+   * @example
+   * await decide.no`is ${message} acceptable?`
+   * await decide.no({ threshold: 0.8 })`is ${message} acceptable?`
    */
   no: DecisionTag<boolean>
-  /** Creates a reusable tag that selects one enum value. */
+  /**
+   * Creates a reusable tag that selects one enum value.
+   * Pass request options to the returned tag.
+   *
+   * @example
+   * import { z } from 'zod'
+   *
+   * const kind = decide.match(z.enum(['bug', 'feature', 'question']))
+   * await kind`what kind of issue is ${issue}?`
+   * const controller = new AbortController()
+   * await kind({ signal: controller.signal })`what kind of issue is ${issue}?`
+   */
   match<Schema extends EnumSchema>(schema: Schema): DecisionTag<output<Schema>>
-  /** Creates a reusable tag that evaluates all fields in one request. */
+  /**
+   * Creates a reusable tag that evaluates all fields in one request.
+   * Pass options to the returned tag; threshold applies to boolean fields.
+   *
+   * @example
+   * import { z } from 'zod'
+   *
+   * const classify = decide.matcher({
+   *   category: z.enum(['billing', 'technical']).describe('Which team should handle this?'),
+   *   urgent: z.boolean().describe('Does this require immediate attention?'),
+   * })
+   * const { category, urgent } = await classify`classify ${ticket}`
+   * await classify({ threshold: 0.8 })`classify ${ticket}`
+   */
   matcher<Shape extends MatcherShape>(shape: Shape): DecisionTag<MatcherResult<Shape>>
 }
 

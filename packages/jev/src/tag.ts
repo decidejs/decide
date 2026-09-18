@@ -13,8 +13,11 @@ export interface DecisionOptions {
 }
 
 /**
+ * A tagged template evaluates the decision; a normal call returns a configured tag.
  * Interpolations must be JSON-compatible and are sent as structured state.
+ *
  * @example
+ * await decide.yes`is ${message} safe to publish?`
  * await decide.yes({ threshold: 0.8 })`is ${message} safe to publish?`
  */
 export interface DecisionTag<T> {
