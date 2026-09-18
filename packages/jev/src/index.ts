@@ -1,13 +1,11 @@
 import type { output } from 'zod/v4/core'
-import type { EnumSchema, MatcherResult, MatcherShape } from './matching'
-import { createMatching } from './matching'
-import { createPredicates } from './predicates'
 import type { DeciderOptions } from './runtime'
 import { DecisionRuntime } from './runtime'
+import type { EnumSchema, MatcherResult, MatcherShape } from './schema'
 import type { DecisionTag } from './tag'
 
-export type { EnumSchema, MatcherResult, MatcherShape } from './matching'
 export type { DeciderOptions } from './runtime'
+export type { EnumSchema, MatcherResult, MatcherShape } from './schema'
 export type { DecisionOptions, DecisionTag } from './tag'
 
 export interface Decisions {
@@ -22,14 +20,16 @@ export interface ConfigurableDecisions extends Decisions {
 }
 
 export function createDecider(options: DeciderOptions = {}): Decisions {
-  const runtime = new DecisionRuntime(options)
-  return { ...createPredicates(runtime), ...createMatching(runtime) }
+  const { yes, no, match, matcher } = new DecisionRuntime(options)
+  return { yes, no, match, matcher }
 }
 
 const globalRuntime = new DecisionRuntime()
 
 export const decide: ConfigurableDecisions = {
-  ...createPredicates(globalRuntime),
-  ...createMatching(globalRuntime),
+  yes: globalRuntime.yes,
+  no: globalRuntime.no,
+  match: globalRuntime.match,
+  matcher: globalRuntime.matcher,
   configure: (options) => globalRuntime.configure(options),
 }
