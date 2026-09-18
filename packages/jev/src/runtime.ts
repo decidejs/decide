@@ -101,6 +101,7 @@ export class DecisionRuntime {
       throw new Error('Call decide.configure(...) before evaluating a global decision')
     }
 
+    const threshold = resolveThreshold(options.threshold ?? current.threshold)
     const compiled = Object.fromEntries(
       Object.entries(questions).map(([id, question]): [string, Question] => {
         const framed = [instructions, question.instructions].filter(Boolean).join('\n\n')
@@ -120,6 +121,6 @@ export class DecisionRuntime {
       { state, questions: compiled, model: options.model },
       { signal: options.signal },
     )
-    return { answers, threshold: resolveThreshold(options.threshold ?? current.threshold) }
+    return { answers, threshold }
   }
 }

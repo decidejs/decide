@@ -154,10 +154,24 @@ describe('boolean decisions', () => {
     await expect(runtime.yes`valid?`).resolves.toBe(true)
   })
 
-  it.each([-1, 0.4, 1.1, Number.NaN, Infinity])('rejects invalid thresholds: %s', (threshold) => {
-    expect(() => new DecisionRuntime({ threshold })).toThrow(RangeError)
-    expect(() => new DecisionRuntime().yes({ threshold })).toThrow(RangeError)
-  })
+  it.each([-1, 0.4, 1.1, Number.NaN, Infinity])(
+    'rejects invalid thresholds before sending a request: %s',
+    (threshold) => {
+      expect(() => new DecisionRuntime({ threshold })).toThrow(RangeError)
+      const fetch = response(0.7)
+      const runtime = new DecisionRuntime({ client: { apiKey: 'test-key', fetch } })
+      const tags = [
+        runtime.yes,
+        runtime.no,
+        runtime.match(z.enum(['a', 'b'])),
+        runtime.matcher({ urgent: z.boolean() }),
+      ]
+      for (const tag of tags) {
+        expect(() => tag({ threshold })).toThrow(RangeError)
+      }
+      expect(fetch).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([undefined, '0.8', -0.1, 1.1, null])('rejects invalid probabilities: %s', async (p) => {
     const custom = new DecisionRuntime({ client: { apiKey: 'test-key', fetch: response(p) } })
