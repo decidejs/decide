@@ -83,13 +83,23 @@ describe('boolean decisions', () => {
     const positive = response(0.7)
     const negative = response(0.1)
     const instance = createDecider({ apiKey: 'test-key', fetch: positive })
-    const strict = decide.yes({ threshold: 0.8 })
-    decide.configure({ apiKey: 'test-key', fetch: positive })
-    await expect(decide.yes`valid?`).resolves.toBe(true)
+    const { configure, yes, no } = decide
+    const strict = yes({ threshold: 0.8 })
+    configure({ apiKey: 'test-key', fetch: positive })
+    await expect(yes`valid?`).resolves.toBe(true)
+    await expect(no`valid?`).resolves.toBe(false)
     await expect(strict`valid?`).resolves.toBe(false)
-    decide.configure({ apiKey: 'test-key', fetch: negative })
-    await expect(decide.yes`valid?`).resolves.toBe(false)
+    configure({ apiKey: 'test-key', fetch: negative })
+    await expect(yes`valid?`).resolves.toBe(false)
+    await expect(no`valid?`).resolves.toBe(true)
     await expect(instance.yes`valid?`).resolves.toBe(true)
+  })
+
+  it('supports destructuring predicates from independent deciders', async () => {
+    const { yes, no } = createDecider({ apiKey: 'test-key', fetch: response(0.7) })
+    await expect(yes`valid?`).resolves.toBe(true)
+    await expect(no`valid?`).resolves.toBe(false)
+    await expect(yes({ threshold: 0.8 })`valid?`).resolves.toBe(false)
   })
 
   it('supports SDK environment configuration after explicitly configuring the global', async () => {

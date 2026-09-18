@@ -3,7 +3,7 @@ import type { EnumSchema, MatcherResult, MatcherShape } from './matching'
 import { createMatching } from './matching'
 import { createPredicates } from './predicates'
 import type { DeciderOptions } from './runtime'
-import { createRuntime, globalRuntime } from './runtime'
+import { DecisionRuntime } from './runtime'
 import type { DecisionTag } from './tag'
 
 export type { EnumSchema, MatcherResult, MatcherShape } from './matching'
@@ -22,12 +22,14 @@ export interface ConfigurableDecisions extends Decisions {
 }
 
 export function createDecider(options: DeciderOptions = {}): Decisions {
-  const runtime = createRuntime(options)
+  const runtime = new DecisionRuntime(options)
   return { ...createPredicates(runtime), ...createMatching(runtime) }
 }
+
+const globalRuntime = new DecisionRuntime()
 
 export const decide: ConfigurableDecisions = {
   ...createPredicates(globalRuntime),
   ...createMatching(globalRuntime),
-  configure: globalRuntime.configure,
+  configure: (options) => globalRuntime.configure(options),
 }

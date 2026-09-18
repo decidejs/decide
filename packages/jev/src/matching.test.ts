@@ -15,6 +15,19 @@ function fixture(answers: unknown, threshold?: number) {
 }
 
 describe('enum matching', () => {
+  it.each(['global', 'factory'])('supports destructuring %s matching methods', async (source) => {
+    const { custom, fetch } = fixture({
+      decision: { type: 'choice', choice: 'a' },
+      urgent: { type: 'noul', noul: 0.7 },
+    })
+    decide.configure({ apiKey: 'test-key', fetch })
+    const { match, matcher } = source === 'global' ? decide : custom
+    await expect(match(z.enum(['a', 'b']))`classify`).resolves.toBe('a')
+    const classify = matcher({ urgent: z.boolean() })
+    await expect(classify`ticket`).resolves.toEqual({ urgent: true })
+    await expect(classify({ threshold: 0.8 })`ticket`).resolves.toEqual({ urgent: false })
+  })
+
   it('returns a typed enum choice from structured state', async () => {
     const { custom, request } = fixture({ decision: { type: 'choice', choice: 'bug' } })
     const issue = { title: 'Crashes on startup' }
