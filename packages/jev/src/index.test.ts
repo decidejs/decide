@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, expectTypeOf, it, vi } from 'vitest'
 import type { Decisions } from './index'
-import { Decider, decide } from './index'
+import { createDecider, decide } from './index'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -25,7 +25,7 @@ describe('boolean decisions', () => {
     [0.51, true, false],
     [1, true, false],
   ])('projects probability %s into complementary default predicates', async (p, yes, no) => {
-    const custom = new Decider({ apiKey: 'test-key', fetch: response(p) })
+    const custom = createDecider({ apiKey: 'test-key', fetch: response(p) })
     await expect(custom.yes`valid?`).resolves.toBe(yes)
     await expect(custom.no`valid?`).resolves.toBe(no)
   })
@@ -37,13 +37,13 @@ describe('boolean decisions', () => {
     [0.7, false, false],
     [0.8, true, false],
   ])('preserves an uncertainty band at probability %s', async (p, yes, no) => {
-    const custom = new Decider({ apiKey: 'test-key', threshold: 0.8, fetch: response(p) })
+    const custom = createDecider({ apiKey: 'test-key', threshold: 0.8, fetch: response(p) })
     await expect(custom.yes`valid?`).resolves.toBe(yes)
     await expect(custom.no`valid?`).resolves.toBe(no)
   })
 
   it('supports reusable per-call options without changing instance defaults', async () => {
-    const custom = new Decider({ apiKey: 'test-key', fetch: response(0.7) })
+    const custom = createDecider({ apiKey: 'test-key', fetch: response(0.7) })
     const strict = custom.yes({ threshold: 0.8 })
     const result = strict`valid?`
     await expect(result).resolves.toBe(false)
@@ -51,13 +51,13 @@ describe('boolean decisions', () => {
     await expect(strict({ threshold: 0.6 })`valid?`).resolves.toBe(true)
     await expect(strict`valid?`).resolves.toBe(false)
     expectTypeOf(result).toEqualTypeOf<Promise<boolean>>()
-    expectTypeOf<Decider>().toExtend<Decisions>()
+    expectTypeOf<ReturnType<typeof createDecider>>().toExtend<Decisions>()
     expect(custom).not.toHaveProperty('configure')
   })
 
   it('passes structured state and instance and per-call SDK configuration', async () => {
     const fetch = response(0.9)
-    const custom = new Decider({
+    const custom = createDecider({
       apiKey: 'test-key',
       baseURL: 'https://example.test',
       defaultModel: 'configured-model',
@@ -82,7 +82,7 @@ describe('boolean decisions', () => {
   it('configures and reconfigures the global independently of instances', async () => {
     const positive = response(0.7)
     const negative = response(0.1)
-    const instance = new Decider({ apiKey: 'test-key', fetch: positive })
+    const instance = createDecider({ apiKey: 'test-key', fetch: positive })
     const strict = decide.yes({ threshold: 0.8 })
     decide.configure({ apiKey: 'test-key', fetch: positive })
     await expect(decide.yes`valid?`).resolves.toBe(true)
@@ -100,12 +100,12 @@ describe('boolean decisions', () => {
   })
 
   it.each([-1, 0.4, 1.1, Number.NaN, Infinity])('rejects invalid thresholds: %s', (threshold) => {
-    expect(() => new Decider({ threshold })).toThrow(RangeError)
+    expect(() => createDecider({ threshold })).toThrow(RangeError)
     expect(() => decide.yes({ threshold })).toThrow(RangeError)
   })
 
   it.each([undefined, '0.8', -0.1, 1.1, null])('rejects invalid probabilities: %s', async (p) => {
-    const custom = new Decider({ apiKey: 'test-key', fetch: response(p) })
+    const custom = createDecider({ apiKey: 'test-key', fetch: response(p) })
     await expect(custom.yes`valid?`).rejects.toThrow('Invalid Noul probability')
   })
 
@@ -114,7 +114,7 @@ describe('boolean decisions', () => {
       init?.signal?.throwIfAborted()
       return new Response('unauthorized', { status: 401 })
     })
-    const custom = new Decider({ apiKey: 'test-key', fetch })
+    const custom = createDecider({ apiKey: 'test-key', fetch })
     await expect(custom.yes`valid?`).rejects.toMatchObject({ status: 401 })
     fetch.mockClear()
     await expect(custom.yes({ signal: AbortSignal.abort() })`valid?`).rejects.toMatchObject({

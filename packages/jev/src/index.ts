@@ -15,15 +15,8 @@ export interface ConfigurableDecisions extends Decisions {
   configure(options: DeciderOptions): void
 }
 
-export class Decider implements Decisions {
-  readonly yes: DecisionTag<boolean>
-  readonly no: DecisionTag<boolean>
-
-  constructor(options: DeciderOptions = {}) {
-    const predicates = createPredicates(createRuntime(options))
-    this.yes = predicates.yes
-    this.no = predicates.no
-  }
+export function createDecider(options: DeciderOptions = {}): Decisions {
+  return createPredicates(createRuntime(options))
 }
 
 export const decide: ConfigurableDecisions = {
